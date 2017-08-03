@@ -8,14 +8,14 @@ void thread1() {
 		puts("hi");
 }
 
-void thread2() { 
+void thread2() {
 	int i;
 	for (i = 0; i < 5; i++)
 		puts("bye");
 }
 
-const int NUMTHREADS = 2;
+const int NUMTHREADS = 4;
 
 typedef void (*threadPtr)();
 
-threadPtr threadFuncs[] = {thread1, thread2};
+threadPtr threadFuncs[] = {thread1, thread2, thread1, thread1};
