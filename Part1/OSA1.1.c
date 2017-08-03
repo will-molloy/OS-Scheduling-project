@@ -76,14 +76,10 @@ void switcher(Thread prevThread, Thread nextThread) {
 
 
 
-void scheduler(Thread thread) {
-
-	switcher(mainThread, thread);
-	// exhaust linked list until empty.
-	while (thread->next != NULL){
-		switcher(thread, thread->next);
-	}
-
+void scheduler() {
+ 	// initially firstThread is scheduled
+	switcher(mainThread, threads[0]);
+  switcher(mainThread, threads[1]);
 }
 
 /*
@@ -162,7 +158,7 @@ int main(void) {
 	}
 	printThreadStates(); // all READY
 	puts("switching to first thread\n"); // call scheduler() here?
-	scheduler(threads[0]); // Schedule first created thread
+	scheduler();
 	puts("back to the main thread\n");
 	printThreadStates(); // all FINISHED at this point
 
