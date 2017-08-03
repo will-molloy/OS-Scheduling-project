@@ -17,14 +17,14 @@
 
 Thread newThread; // the thread currently being set up
 Thread mainThread; // the main thread
-const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to print enum names
 struct sigaction setUpAction;
-
+const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to print enum names
+Thread threads[4];
 
 /*
  * Prints the Thread States.
  */
-void printThreadStates(Thread threads[]){
+void printThreadStates(){
 	printf("Thread States\n=============\n");
 	printf("mainThread; id=%d, state=%s\n", mainThread->tid, stateNames[mainThread->state]);
 	for (int t = 0; t < NUMTHREADS; t++){
@@ -69,7 +69,7 @@ void switcher(Thread prevThread, Thread nextThread) {
 	} else if (setjmp(prevThread->environment) == 0) { // so we can come back here
 		prevThread->state = READY;
 		nextThread->state = RUNNING;
-		printf("scheduling %d\n", nextThread->tid);
+		printThreadStates();
 		longjmp(nextThread->environment, 1);
 	}
 }
@@ -148,7 +148,6 @@ Thread createThread(void (startFunc)()) {
 
 int main(void) {
 	struct thread controller;
-	Thread threads[NUMTHREADS];
 	mainThread = &controller;
 	mainThread->state = RUNNING;
 	setUpStackTransfer();
@@ -161,11 +160,11 @@ int main(void) {
 		threads[t]->next = threads[(t+1)%NUMTHREADS];
 		threads[t]->prev = threads[(t+NUMTHREADS-1)%NUMTHREADS]; // effectively subtracting
 	}
-	printThreadStates(threads); // all READY
+	printThreadStates(); // all READY
 	puts("switching to first thread\n"); // call scheduler() here?
 	scheduler(threads[0]); // Schedule first created thread
 	puts("back to the main thread\n");
-	printThreadStates(threads); // all FINISHED at this point
+	printThreadStates(); // all FINISHED at this point
 
 	return EXIT_SUCCESS;
 }
