@@ -23,7 +23,7 @@ const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to p
 Thread threads[5];
 
 void printThreadStates(){
-	printf("Thread States\n=============\n");
+	printf("\nThread States\n=============\n");
 	for (int t = 0; t < NUMTHREADS; t++){
 		Thread thread = threads[t];
 		printf("threadID: %d state:%s\n",thread->tid, stateNames[thread->state]);
@@ -33,39 +33,34 @@ void printThreadStates(){
 
 void removeThreadFromList(Thread thread){
 	printf("\ndisposing %d\n", thread->tid);
-	free(thread->stackAddr); // Wow!
 	thread->prev->next = thread->next;
 	thread->next->prev = thread->prev;
 	thread->next = NULL;
 	thread->prev = NULL;
+	free(thread->stackAddr); // Wow!
 }
 
 /*
  * Switches execution from prevThread to nextThread.
  */
 void switcher(Thread prevThread, Thread nextThread) {
-	printf("switcher(), prevThread: %d, nextThread: %d\n", prevThread->tid, nextThread->tid);
 	if (prevThread->state == FINISHED) { // it has finished
 		removeThreadFromList(prevThread);
-		//longjmp(nextThread->environment, 1);
+		longjmp(nextThread->environment, 1);
 	}
-	if (setjmp(prevThread->environment) == 0) { // so we can come back here
-		nextThread->state = RUNNING;
-		printf("scheduling %d\n", nextThread->tid);
-		printThreadStates();
+	else if (setjmp(prevThread->environment) == 0) { // so we can come back here
 		longjmp(nextThread->environment, 1);
 	}
 }
 
 void scheduler(){
-	// Select next READY thread ? Use longjmps() here?
+	// iterate the linked list while there is a next thread that isn't the current thread
 	while (currentThread->next && currentThread != currentThread->next){
-		currentThread = currentThread->next;
+		currentThread = currentThread->next; // so currentThread can be removed
 		switcher(currentThread->prev, currentThread);
 	}
-	puts("scheduler() back from switcher()");
+	// list has been exhausted, switch back to main thread
 	switcher(currentThread, mainThread);
-	puts("back to the main thread");
 }
 
 /*
@@ -74,11 +69,11 @@ void scheduler(){
  * This is called when SIGUSR1 is received.
  */
 void associateStack(int signum) {
-	puts("associateStack(): create"); // called on creating threads
 	Thread localThread = newThread; // what if we don't use this local variable?
 	localThread->state = READY; // now it has its stack
 	if (setjmp(localThread->environment) != 0) { // will be zero if called directly
-		puts("associateStack(): longjmp"); // called from switcher longjmp()
+		localThread->state = RUNNING;
+		printThreadStates();
 		(localThread->start)();
 		localThread->state = FINISHED;
 		scheduler(); // pick next thread to run
@@ -144,12 +139,19 @@ int main(void) {
 		threads[t]->next = threads[(t+1)%NUMTHREADS];
 		threads[t]->prev = threads[(t+NUMTHREADS-1)%NUMTHREADS];
 	}
+	// print states after thread creation but before any have started
+	printThreadStates();
+
 	// keep track of curernt thread; initially first created thread
 	currentThread = threads[0];
-	printThreadStates();
+
+	// switch to first thread; this will lead to scheduler() being called
 	puts("switching to first thread");
 	switcher(mainThread, currentThread);
-	//scheduler(); // begins with currentThread = threads[0]
-	//switcher(mainThread, threads[0]);
+
+	puts("back to the main thread");
+
+	// print states one last time before process finishes
+	printThreadStates();
 	return EXIT_SUCCESS;
 }
