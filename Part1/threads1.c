@@ -14,8 +14,8 @@ void thread2() {
 		puts("bye");
 }
 
-const int NUMTHREADS = 4;
+const int NUMTHREADS = 2;
 
 typedef void (*threadPtr)();
 
-threadPtr threadFuncs[] = {thread1, thread2, thread1, thread1};
+threadPtr threadFuncs[] = {thread1, thread2, thread1, thread2, thread1};

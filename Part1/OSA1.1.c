@@ -1,9 +1,9 @@
 /*
  ============================================================================
  Name        : OSA1.1.c
- Author		   : Will Molloy, wmol664 (original by Robert Sheehan)
+ Author      : Will Molloy, wmol664 (original by Robert Sheehan)
  Version     : 1.0
- Description : Single thread implementation.
+ Description : Switches between threads in linked list in creation order.
  ============================================================================
  */
 
@@ -17,40 +17,23 @@
 
 Thread newThread; // the thread currently being set up
 Thread mainThread; // the main thread
+Thread currentThread; // the thread currently running
 struct sigaction setUpAction;
 const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to print enum names
-Thread threads[4];
+Thread threads[5];
 
-/*
- * Prints the Thread States.
- */
 void printThreadStates(){
 	printf("Thread States\n=============\n");
-	printf("mainThread; id=%d, state=%s\n", mainThread->tid, stateNames[mainThread->state]);
 	for (int t = 0; t < NUMTHREADS; t++){
 		Thread thread = threads[t];
-		// need to print some other way. the finished ones are removed from the list.
 		printf("threadID: %d state:%s\n",thread->tid, stateNames[thread->state]);
 	}
 	printf("\n");
 }
 
-/*
- * For debugging and understanding linked list.
- */
-void printThreadsInLinkedlist(Thread firstThread){
-	Thread thread = firstThread;
-	do {
-		printf("threadID: %d state:%s NEXT:%d, PREV:%d\n",thread->tid, stateNames[thread->state], thread->next->tid, thread->prev->tid);
-		thread = thread->next;
-	} while(thread != firstThread);
-	printf("\n");
-}
-
-/*
- * Removes the given thread from the circular linked list.
- */
 void removeThreadFromList(Thread thread){
+	printf("\ndisposing %d\n", thread->tid);
+	free(thread->stackAddr); // Wow!
 	thread->prev->next = thread->next;
 	thread->next->prev = thread->prev;
 	thread->next = NULL;
@@ -61,25 +44,28 @@ void removeThreadFromList(Thread thread){
  * Switches execution from prevThread to nextThread.
  */
 void switcher(Thread prevThread, Thread nextThread) {
+	printf("switcher(), prevThread: %d, nextThread: %d\n", prevThread->tid, nextThread->tid);
 	if (prevThread->state == FINISHED) { // it has finished
-		printf("\ndisposing %d\n", prevThread->tid);
 		removeThreadFromList(prevThread);
-		free(prevThread->stackAddr); // Wow!
-		longjmp(nextThread->environment, 1);
-	} else if (setjmp(prevThread->environment) == 0) { // so we can come back here
-		prevThread->state = READY;
+		//longjmp(nextThread->environment, 1);
+	}
+	if (setjmp(prevThread->environment) == 0) { // so we can come back here
 		nextThread->state = RUNNING;
+		printf("scheduling %d\n", nextThread->tid);
 		printThreadStates();
 		longjmp(nextThread->environment, 1);
 	}
 }
 
-
-
-void scheduler() {
- 	// initially firstThread is scheduled
-	switcher(mainThread, threads[0]);
-  switcher(mainThread, threads[1]);
+void scheduler(){
+	// Select next READY thread ? Use longjmps() here?
+	while (currentThread->next && currentThread != currentThread->next){
+		currentThread = currentThread->next;
+		switcher(currentThread->prev, currentThread);
+	}
+	puts("scheduler() back from switcher()");
+	switcher(currentThread, mainThread);
+	puts("back to the main thread");
 }
 
 /*
@@ -88,12 +74,14 @@ void scheduler() {
  * This is called when SIGUSR1 is received.
  */
 void associateStack(int signum) {
+	puts("associateStack(): create"); // called on creating threads
 	Thread localThread = newThread; // what if we don't use this local variable?
 	localThread->state = READY; // now it has its stack
 	if (setjmp(localThread->environment) != 0) { // will be zero if called directly
+		puts("associateStack(): longjmp"); // called from switcher longjmp()
 		(localThread->start)();
 		localThread->state = FINISHED;
-		switcher(localThread, mainThread); // at the moment back to the main thread
+		scheduler(); // pick next thread to run
 	}
 }
 
@@ -151,16 +139,17 @@ int main(void) {
 	for (int t = 0; t < NUMTHREADS; t++) {
 		threads[t] = createThread(threadFuncs[t]);
 	}
-	// link the threads in a circular linked list
+	// put threads into doubly circular linked list
 	for (int t = 0; t < NUMTHREADS; t++){
 		threads[t]->next = threads[(t+1)%NUMTHREADS];
-		threads[t]->prev = threads[(t+NUMTHREADS-1)%NUMTHREADS]; // effectively subtracting
+		threads[t]->prev = threads[(t+NUMTHREADS-1)%NUMTHREADS];
 	}
-	printThreadStates(); // all READY
-	puts("switching to first thread\n"); // call scheduler() here?
-	scheduler();
-	puts("back to the main thread\n");
-	printThreadStates(); // all FINISHED at this point
-
+	// keep track of curernt thread; initially first created thread
+	currentThread = threads[0];
+	printThreadStates();
+	puts("switching to first thread");
+	switcher(mainThread, currentThread);
+	//scheduler(); // begins with currentThread = threads[0]
+	//switcher(mainThread, threads[0]);
 	return EXIT_SUCCESS;
 }
