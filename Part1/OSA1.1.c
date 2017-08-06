@@ -47,10 +47,12 @@ void removeThreadFromList(Thread thread){
  * Switches execution from prevThread to nextThread.
  */
 void switcher(Thread prevThread, Thread nextThread) {
+	//printf("switcher(), prevThread: %d, nextThread: %d, current: %d\n", prevThread->tid, nextThread->tid, currentThread->tid);
 	if (prevThread->state == FINISHED) { // it has finished
 		removeThreadFromList(prevThread);
-		nextThread->state = RUNNING;
-		longjmp(nextThread->environment, 0);
+		currentThread->state = RUNNING;
+		printThreadStates();
+		longjmp(nextThread->environment, 1);
 	}
 	else if (setjmp(prevThread->environment) == 0) { // so we can come back here
 		prevThread->state = READY;
@@ -61,21 +63,16 @@ void switcher(Thread prevThread, Thread nextThread) {
 }
 
 void scheduler(){
-	while (currentThread){
-		if(currentThread->state == READY){
-			currentThread->state == RUNNING;
-			longjmp(currentThread->environment, 1);
-		}
-		if (currentThread->next->state == READY){ // iterate by picking next READY thread
-			currentThread = currentThread->next; // so currentThread can be removed
-			switcher(currentThread->prev, currentThread);
-		} else if (currentThread->state == FINISHED){ // last thread in list, switch back to main thread
-			switcher(currentThread, mainThread);
+	while (currentThread->state != READY) {
+		currentThread = currentThread->next;
+		if (currentThread->state == FINISHED){
+			// list exhausted (one finished thread left in it), go back to main thread
+			removeThreadFromList(currentThread);
+			longjmp(mainThread->environment, 1);
 		}
 	}
-
-
-	switcher(currentThread, mainThread);
+	//longjmp(currentThread->environment, 1);
+	switcher(currentThread->prev, currentThread);
 }
 
 /*
