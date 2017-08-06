@@ -1,16 +1,9 @@
 /*
  ============================================================================
-<<<<<<< HEAD
  Name        : OSA1.2.c
  Author      : Will Molloy, wmol664 (original by Robert Sheehan)
  Version     : 1.0
- Description : Contains threadYield() function to switch threads.
-=======
- Name        : OSA1.1.c
- Author      : Will Molloy, wmol664 (original by Robert Sheehan)
- Version     : 1.0
- Description : Switches between threads in linked list in creation order.
->>>>>>> Part2
+ Description : Contains threadYield() function to stop running threads.
  ============================================================================
  */
 
@@ -28,7 +21,7 @@ Thread currentThread; // the thread currently running
 struct sigaction setUpAction;
 const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to print enum names
 
-Thread threads[5]; // TODO CHANGE IT USE CONSTANT VALUE
+Thread *threads; // Points to an array of threads (made it global for easier printing)
 
 /*
  * Called whenever there is a change in threads
@@ -157,6 +150,7 @@ Thread createThread(void (startFunc)()) {
 
 int main(void) {
 	struct thread controller;
+	threads = malloc(sizeof(*threads) * NUMTHREADS);
 	mainThread = &controller;
 	mainThread->state = RUNNING;
 	setUpStackTransfer();
