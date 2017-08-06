@@ -3,7 +3,7 @@
  Name        : OSA1.1.c
  Author      : Will Molloy, wmol664 (original by Robert Sheehan)
  Version     : 1.0
- Description : Switches between threads in linked list in creation order.
+ Description : Switches between threads once they're finished.
  ============================================================================
  */
 
@@ -20,7 +20,8 @@ Thread mainThread; // the main thread
 Thread currentThread; // the thread currently running
 struct sigaction setUpAction;
 const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to print enum names
-Thread threads[5];
+
+Thread *threads; // Points to an array of threads (made it global for easier printing)
 
 /*
  * Called whenever there is a change in threads
@@ -47,7 +48,6 @@ void removeThreadFromList(Thread thread){
  * Switches execution from prevThread to nextThread.
  */
 void switcher(Thread prevThread, Thread nextThread) {
-	//printf("switcher(), prevThread: %d, nextThread: %d, current: %d\n", prevThread->tid, nextThread->tid, currentThread->tid);
 	if (prevThread->state == FINISHED) { // it has finished
 		removeThreadFromList(prevThread);
 		currentThread->state = RUNNING;
@@ -62,17 +62,30 @@ void switcher(Thread prevThread, Thread nextThread) {
 	}
 }
 
+
 void scheduler(){
-	while (currentThread->state != READY) {
-		currentThread = currentThread->next;
+	// Check the list has more than one thread
+	if (currentThread == currentThread->next){
 		if (currentThread->state == FINISHED){
 			// list exhausted (one finished thread left in it), go back to main thread
 			removeThreadFromList(currentThread);
 			longjmp(mainThread->environment, 1);
+		} else if (currentThread->state == RUNNING){
+			// One thread left in the list but its still running, return from threadYield in Part2
+			return;
 		}
 	}
-	//longjmp(currentThread->environment, 1);
+
+	// pick next READY thread
+	while (currentThread->state != READY) {
+		currentThread = currentThread->next;
+	}
+	// Switch to next READY thread
 	switcher(currentThread->prev, currentThread);
+}
+
+void threadYield(){
+	scheduler();
 }
 
 /*
@@ -137,6 +150,7 @@ Thread createThread(void (startFunc)()) {
 
 int main(void) {
 	struct thread controller;
+	threads = malloc(sizeof(*threads) * NUMTHREADS);
 	mainThread = &controller;
 	mainThread->state = RUNNING;
 	setUpStackTransfer();
