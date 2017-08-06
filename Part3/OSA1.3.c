@@ -1,9 +1,9 @@
-/*
+﻿/*
  ============================================================================
- Name        : OSA1.2.c
+ Name        : OSA1.3.c
  Author      : Will Molloy, wmol664 (original by Robert Sheehan)
  Version     : 1.0
- Description : Contains threadYield() function to stop running threads.
+ Description : Part3 for SE370 A1
  ============================================================================
  */
 
@@ -11,9 +11,11 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <string.h>
 
 #include "littleThread.h"
-#include "threads5.c" // rename this for different threads
+#include "threads3.c" // rename this for different threads
 
 Thread newThread; // the thread currently being set up
 Thread mainThread; // the main thread
@@ -72,7 +74,7 @@ void scheduler(){
 			longjmp(mainThread->environment, 1);
 		} else if (currentThread->state == RUNNING){
 			// One thread left in the list but its still running, return from threadYield
-			printThreadStates();
+			printThreadStates(); // technically changed thread even if its the same
 			return;
 		}
 	}
@@ -85,8 +87,31 @@ void scheduler(){
 	switcher(currentThread->prev, currentThread);
 }
 
+/*
+ * Interupts the current RUNNING thread and schedules the next READY thread.
+ */
 void threadYield(){
-	scheduler(); // thats all??
+	scheduler(); 
+}
+
+/*
+ * Sets up an interupt timer using SIGVTALRM that will call threadYield every 20ms
+ */
+void setUpTimer(){      
+         struct sigaction sa;
+         struct itimerval timer;
+
+         // link the alarm with threadYield()
+         memset (&sa, 0, sizeof (sa));
+         sa.sa_handler = &threadYield;
+         sigaction (SIGVTALRM, &sa, NULL);
+
+         // the timer will expire every 20ms (20,000us)
+         timer.it_value.tv_sec = timer.it_interval.tv_sec = 0;
+         timer.it_value.tv_usec = timer.it_interval.tv_usec = 20000;
+         
+         // start the timer
+         setitimer (ITIMER_VIRTUAL, &timer, NULL);         
 }
 
 /*
@@ -113,6 +138,7 @@ void setUpStackTransfer() {
 	setUpAction.sa_handler = (void *) associateStack;
 	setUpAction.sa_flags = SA_ONSTACK;
 	sigaction(SIGUSR1, &setUpAction, NULL);
+	
 }
 
 /*
@@ -172,6 +198,7 @@ int main(void) {
 
 	// switch to first thread; this will lead to scheduler() being called
 	puts("switching to first thread");
+	setUpTimer(); // begin interupt timer just before running the threads
 	switcher(mainThread, currentThread);
 
 	puts("\nback to the main thread");

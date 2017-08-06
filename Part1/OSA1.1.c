@@ -177,5 +177,6 @@ int main(void) {
 
 	// print states one last time before process finishes
 	printThreadStates();
+	free(threads);
 	return EXIT_SUCCESS;
 }
