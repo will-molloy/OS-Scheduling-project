@@ -22,6 +22,9 @@ struct sigaction setUpAction;
 const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to print enum names
 Thread threads[5];
 
+/*
+ * Called whenever there is a change in threads
+ */
 void printThreadStates(){
 	printf("\nThread States\n=============\n");
 	for (int t = 0; t < NUMTHREADS; t++){
@@ -46,20 +49,32 @@ void removeThreadFromList(Thread thread){
 void switcher(Thread prevThread, Thread nextThread) {
 	if (prevThread->state == FINISHED) { // it has finished
 		removeThreadFromList(prevThread);
-		longjmp(nextThread->environment, 1);
+		nextThread->state = RUNNING;
+		longjmp(nextThread->environment, 0);
 	}
 	else if (setjmp(prevThread->environment) == 0) { // so we can come back here
+		prevThread->state = READY;
+		nextThread->state = RUNNING;
+		printThreadStates();
 		longjmp(nextThread->environment, 1);
 	}
 }
 
 void scheduler(){
-	// iterate the linked list while there is a next thread that isn't the current thread
-	while (currentThread->next && currentThread != currentThread->next){
-		currentThread = currentThread->next; // so currentThread can be removed
-		switcher(currentThread->prev, currentThread);
+	while (currentThread){
+		if(currentThread->state == READY){
+			currentThread->state == RUNNING;
+			longjmp(currentThread->environment, 1);
+		}
+		if (currentThread->next->state == READY){ // iterate by picking next READY thread
+			currentThread = currentThread->next; // so currentThread can be removed
+			switcher(currentThread->prev, currentThread);
+		} else if (currentThread->state == FINISHED){ // last thread in list, switch back to main thread
+			switcher(currentThread, mainThread);
+		}
 	}
-	// list has been exhausted, switch back to main thread
+
+
 	switcher(currentThread, mainThread);
 }
 
@@ -72,8 +87,6 @@ void associateStack(int signum) {
 	Thread localThread = newThread; // what if we don't use this local variable?
 	localThread->state = READY; // now it has its stack
 	if (setjmp(localThread->environment) != 0) { // will be zero if called directly
-		localThread->state = RUNNING;
-		printThreadStates();
 		(localThread->start)();
 		localThread->state = FINISHED;
 		scheduler(); // pick next thread to run
@@ -149,7 +162,7 @@ int main(void) {
 	puts("switching to first thread");
 	switcher(mainThread, currentThread);
 
-	puts("back to the main thread");
+	puts("\nback to the main thread");
 
 	// print states one last time before process finishes
 	printThreadStates();
