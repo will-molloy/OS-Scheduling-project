@@ -12,7 +12,7 @@ void thread1() {
 	}
 }
 
-void thread2() { 
+void thread2() {
 	int i;
 	for (i = 0; i < 2; i++) {
 		puts("bye");

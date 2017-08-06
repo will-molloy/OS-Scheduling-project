@@ -1,9 +1,16 @@
 /*
  ============================================================================
+<<<<<<< HEAD
  Name        : OSA1.2.c
  Author      : Will Molloy, wmol664 (original by Robert Sheehan)
  Version     : 1.0
  Description : Contains threadYield() function to switch threads.
+=======
+ Name        : OSA1.1.c
+ Author      : Will Molloy, wmol664 (original by Robert Sheehan)
+ Version     : 1.0
+ Description : Switches between threads in linked list in creation order.
+>>>>>>> Part2
  ============================================================================
  */
 
@@ -20,8 +27,12 @@ Thread mainThread; // the main thread
 Thread currentThread; // the thread currently running
 struct sigaction setUpAction;
 const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to print enum names
-Thread threads[3]; // TODO change thissssssssssss
 
+Thread threads[5]; // TODO CHANGE IT USE CONSTANT VALUE
+
+/*
+ * Called whenever there is a change in threads
+ */
 void printThreadStates(){
 	printf("\nThread States\n=============\n");
 	for (int t = 0; t < NUMTHREADS; t++){
@@ -44,37 +55,37 @@ void removeThreadFromList(Thread thread){
  * Switches execution from prevThread to nextThread.
  */
 void switcher(Thread prevThread, Thread nextThread) {
-	//printf("switcher(), prevThread: %d, nextThread: %d\n", prevThread->tid, nextThread->tid);
+	//printf("switcher(), prevThread: %d, nextThread: %d, current: %d\n", prevThread->tid, nextThread->tid, currentThread->tid);
 	if (prevThread->state == FINISHED) { // it has finished
 		removeThreadFromList(prevThread);
+		currentThread->state = RUNNING;
+		printThreadStates();
 		longjmp(nextThread->environment, 1);
 	}
 	else if (setjmp(prevThread->environment) == 0) { // so we can come back here
-		printThreadStates();
 		prevThread->state = READY;
 		nextThread->state = RUNNING;
+		printThreadStates();
 		longjmp(nextThread->environment, 1);
 	}
 }
 
-// Selects next ready thread
+
 void scheduler(){
-	while (currentThread){
-		if (currentThread->next->state == READY){ // pick next READY thread
-			currentThread = currentThread->next; // so currentThread can be removed
-			switcher(currentThread->prev, currentThread);
-		} else if (currentThread->state == FINISHED){ // last thread in list, switch back to main thread
-			switcher(currentThread, mainThread);
-		} else {
-		//	puts("stuck in scheduler() loop");
+	while (currentThread->state != READY) { // pick next READY thread ..
+		currentThread = currentThread->next;
+		if (currentThread->state == FINISHED){
+			// list exhausted (one finished thread left in it), go back to main thread
+			removeThreadFromList(currentThread);
+			longjmp(mainThread->environment, 1);
 		}
 	}
-	switcher(currentThread, mainThread);
+	//longjmp(currentThread->environment, 1);
+	switcher(currentThread->prev, currentThread); // .. and switch to it
 }
 
 void threadYield(){
-	// use kill() on the running thread, longjmp(0) on next ready one?
-	scheduler();
+	scheduler(); // thats all??
 }
 
 /*
@@ -86,7 +97,6 @@ void associateStack(int signum) {
 	Thread localThread = newThread; // what if we don't use this local variable?
 	localThread->state = READY; // now it has its stack
 	if (setjmp(localThread->environment) != 0) { // will be zero if called directly
-		printThreadStates();
 		(localThread->start)();
 		localThread->state = FINISHED;
 		scheduler(); // pick next thread to run
