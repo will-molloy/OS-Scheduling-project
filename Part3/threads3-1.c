@@ -1,5 +1,6 @@
 /*
 	The threads.
+	@author: Will Molloy, wmol664
 */
 
 sigset_t signalSet;
@@ -7,23 +8,23 @@ sigset_t signalSet;
 void signalsOff() {
 	if (sigemptyset(&signalSet) < 0) {
 		perror("empty signal set");
-		exit(EXIT_FAILURE);		
+		exit(EXIT_FAILURE);
 	}
 	if (sigaddset(&signalSet, SIGVTALRM) < 0) {
 		perror("add sigvtalrm");
-		exit(EXIT_FAILURE);		
+		exit(EXIT_FAILURE);
 	}
 	if (sigprocmask(SIG_BLOCK, &signalSet, NULL) < 0) { // block SIGVTALRM
 		perror("block signal");
 		exit(EXIT_FAILURE);
-	}	
+	}
 }
 
 void signalsOn() {
 	if (sigprocmask(SIG_UNBLOCK, &signalSet, NULL) < 0) {
 		perror("unblock signal");
 		exit(EXIT_FAILURE);
-	}	
+	}
 }
 
 int wasteTime(int number) {
@@ -41,7 +42,7 @@ int wasteTime(int number) {
 
 void thread1() {
 	int i;
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < 10; i++) {
 		wasteTime(10);
 		// signalsOff();
 		puts("hi");
@@ -50,12 +51,23 @@ void thread1() {
 	}
 }
 
-void thread2() { 
+void thread2() {
 	int i;
-	for (i = 0; i < 50; i++) {
+	for (i = 0; i < 5; i++) {
 		wasteTime(20);
 		// signalsOff();
 		puts("bye");
+		printf("%d\n", wasteTime(20));
+		// signalsOn();
+	}
+}
+
+void thread3(){
+	int i;
+	for (i = 0; i < 15; i++) {
+		wasteTime(20);
+		// signalsOff();
+		puts("hey");
 		printf("%d\n", wasteTime(20));
 		// signalsOn();
 	}
@@ -65,4 +77,4 @@ const int NUMTHREADS = 6;
 
 typedef void (*threadPtr)();
 
-threadPtr threadFuncs[] = {thread1, thread2, thread2, thread1, thread2, thread1};
+threadPtr threadFuncs[] = {thread1, thread3, thread2, thread2, thread1, thread2};

@@ -1,9 +1,9 @@
-﻿/*
+/*
  ============================================================================
  Name        : OSA1.3.c
  Author      : Will Molloy, wmol664 (original by Robert Sheehan)
  Version     : 1.0
- Description : Part3 for SE370 A1
+ Description : Now interupts threads (yields the RUNNING one) every 20ms.
  ============================================================================
  */
 
@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+
 #include <sys/time.h>
 #include <string.h>
 
@@ -21,9 +22,9 @@ Thread newThread; // the thread currently being set up
 Thread mainThread; // the main thread
 Thread currentThread; // the thread currently running
 struct sigaction setUpAction;
-const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to print enum names
 
-Thread *threads; // Points to an array of threads (made it global for easier printing)
+const char *stateNames[] = { "setup" , "running", "ready", "finished" }; // to print enum names
+Thread *threads; // Points to an array of threads (made global for easier printing)
 
 /*
  * Called whenever there is a change in threads
@@ -37,6 +38,9 @@ void printThreadStates(){
 	printf("\n");
 }
 
+/*
+ * Removes the given thread from the linked list and frees its stack space.
+ */
 void removeThreadFromList(Thread thread){
 	printf("\ndisposing %d\n", thread->tid);
 	thread->prev->next = thread->next;
@@ -55,8 +59,7 @@ void switcher(Thread prevThread, Thread nextThread) {
 		currentThread->state = RUNNING;
 		printThreadStates();
 		longjmp(nextThread->environment, 1);
-	}
-	else if (setjmp(prevThread->environment) == 0) { // so we can come back here
+	} else if (setjmp(prevThread->environment) == 0) { // so we can come back here
 		prevThread->state = READY;
 		nextThread->state = RUNNING;
 		printThreadStates();
@@ -64,7 +67,9 @@ void switcher(Thread prevThread, Thread nextThread) {
 	}
 }
 
-
+/*
+ * Schedules the next READY thread.
+ */
 void scheduler(){
 	// Check the list has more than one thread
 	if (currentThread == currentThread->next){
@@ -74,7 +79,7 @@ void scheduler(){
 			longjmp(mainThread->environment, 1);
 		} else if (currentThread->state == RUNNING){
 			// One thread left in the list but its still running, return from threadYield
-			printThreadStates(); // technically changed thread even if its the same
+			printThreadStates();
 			return;
 		}
 	}
@@ -88,30 +93,38 @@ void scheduler(){
 }
 
 /*
- * Interupts the current RUNNING thread and schedules the next READY thread.
+ * Interupts the RUNNING thread by scheduling the next READY thread.
+ * If all other threads have finished; will return to the current RUNNING thread.
  */
 void threadYield(){
-	scheduler(); 
+	scheduler();
 }
 
 /*
- * Sets up an interupt timer using SIGVTALRM that will call threadYield every 20ms
+ * Handler for the SIGVTALRM.
  */
-void setUpTimer(){      
-         struct sigaction sa;
-         struct itimerval timer;
+void interuptTimerHandler(){
+	threadYield();
+}
 
-         // link the alarm with threadYield()
-         memset (&sa, 0, sizeof (sa));
-         sa.sa_handler = &threadYield;
-         sigaction (SIGVTALRM, &sa, NULL);
+/*
+ * Sets up an interupt timer using SIGVTALRM that will call threadYield() every 20ms.
+ */
+void setUpTimer(){
+	struct sigaction sa;
+	struct itimerval timer;
 
-         // the timer will expire every 20ms (20,000us)
-         timer.it_value.tv_sec = timer.it_interval.tv_sec = 0;
-         timer.it_value.tv_usec = timer.it_interval.tv_usec = 20000;
-         
-         // start the timer
-         setitimer (ITIMER_VIRTUAL, &timer, NULL);         
+	// link the interupt with its handler
+	memset (&sa, 0, sizeof (sa));
+	sa.sa_handler = &interuptTimerHandler;
+	sigaction (SIGVTALRM, &sa, NULL);
+
+	// the interupt timer will expire every 20ms (20,000us)
+	timer.it_value.tv_sec = timer.it_interval.tv_sec = 0;
+	timer.it_value.tv_usec = timer.it_interval.tv_usec = 20000;
+
+	// start the timer
+	setitimer(ITIMER_VIRTUAL, &timer, NULL);
 }
 
 /*
@@ -138,7 +151,6 @@ void setUpStackTransfer() {
 	setUpAction.sa_handler = (void *) associateStack;
 	setUpAction.sa_flags = SA_ONSTACK;
 	sigaction(SIGUSR1, &setUpAction, NULL);
-	
 }
 
 /*
@@ -198,7 +210,7 @@ int main(void) {
 
 	// switch to first thread; this will lead to scheduler() being called
 	puts("switching to first thread");
-	setUpTimer(); // begin interupt timer just before running the threads
+	setUpTimer(); // begin interupt timer just before starting the threads
 	switcher(mainThread, currentThread);
 
 	puts("\nback to the main thread");

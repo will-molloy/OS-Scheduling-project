@@ -3,7 +3,7 @@
  Name        : OSA1.2.c
  Author      : Will Molloy, wmol664 (original by Robert Sheehan)
  Version     : 1.0
- Description : Contains threadYield() function to stop running threads.
+ Description : Contains threadYield() to change the RUNNING thread.
  ============================================================================
  */
 
@@ -13,15 +13,15 @@
 #include <unistd.h>
 
 #include "littleThread.h"
-#include "threads5.c" // rename this for different threads
+#include "threads2.c" // rename this for different threads
 
 Thread newThread; // the thread currently being set up
 Thread mainThread; // the main thread
 Thread currentThread; // the thread currently running
 struct sigaction setUpAction;
-const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to print enum names
 
-Thread *threads; // Points to an array of threads (made it global for easier printing)
+const char *stateNames[] = { "setup" , "running", "ready", "finished" }; // to print enum names
+Thread *threads; // Points to an array of threads (made global for easier printing)
 
 /*
  * Called whenever there is a change in threads
@@ -35,6 +35,9 @@ void printThreadStates(){
 	printf("\n");
 }
 
+/*
+ * Removes the given thread from the linked list and frees its stack space.
+ */
 void removeThreadFromList(Thread thread){
 	printf("\ndisposing %d\n", thread->tid);
 	thread->prev->next = thread->next;
@@ -53,8 +56,7 @@ void switcher(Thread prevThread, Thread nextThread) {
 		currentThread->state = RUNNING;
 		printThreadStates();
 		longjmp(nextThread->environment, 1);
-	}
-	else if (setjmp(prevThread->environment) == 0) { // so we can come back here
+	} else if (setjmp(prevThread->environment) == 0) { // so we can come back here
 		prevThread->state = READY;
 		nextThread->state = RUNNING;
 		printThreadStates();
@@ -62,7 +64,9 @@ void switcher(Thread prevThread, Thread nextThread) {
 	}
 }
 
-
+/*
+ * Schedules the next READY thread.
+ */
 void scheduler(){
 	// Check the list has more than one thread
 	if (currentThread == currentThread->next){
@@ -85,8 +89,12 @@ void scheduler(){
 	switcher(currentThread->prev, currentThread);
 }
 
+/*
+ * Interupts the RUNNING thread by scheduling the next READY thread.
+ * If all other threads have finished; will return to the current RUNNING thread.
+ */
 void threadYield(){
-	scheduler(); // thats all??
+	scheduler();
 }
 
 /*

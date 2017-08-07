@@ -19,9 +19,9 @@ Thread newThread; // the thread currently being set up
 Thread mainThread; // the main thread
 Thread currentThread; // the thread currently running
 struct sigaction setUpAction;
-const char *stateNames[] = { "SETUP" , "RUNNING", "READY", "FINISHED" }; // to print enum names
 
-Thread *threads; // Points to an array of threads (made it global for easier printing)
+const char *stateNames[] = { "setup" , "running", "ready", "finished" }; // to print enum names
+Thread *threads; // Points to an array of threads (made global for easier printing)
 
 /*
  * Called whenever there is a change in threads
@@ -35,6 +35,9 @@ void printThreadStates(){
 	printf("\n");
 }
 
+/*
+ * Removes the given thread from the linked list and frees its stack space.
+ */
 void removeThreadFromList(Thread thread){
 	printf("\ndisposing %d\n", thread->tid);
 	thread->prev->next = thread->next;
@@ -53,8 +56,7 @@ void switcher(Thread prevThread, Thread nextThread) {
 		currentThread->state = RUNNING;
 		printThreadStates();
 		longjmp(nextThread->environment, 1);
-	}
-	else if (setjmp(prevThread->environment) == 0) { // so we can come back here
+	} else if (setjmp(prevThread->environment) == 0) { // so we can come back here
 		prevThread->state = READY;
 		nextThread->state = RUNNING;
 		printThreadStates();
@@ -62,7 +64,9 @@ void switcher(Thread prevThread, Thread nextThread) {
 	}
 }
 
-
+/*
+ * Schedules the next READY thread.
+ */
 void scheduler(){
 	// Check the list has more than one thread
 	if (currentThread == currentThread->next){
@@ -71,7 +75,8 @@ void scheduler(){
 			removeThreadFromList(currentThread);
 			longjmp(mainThread->environment, 1);
 		} else if (currentThread->state == RUNNING){
-			// One thread left in the list but its still running, return from threadYield in Part2
+			// One thread left in the list but its still running, return from threadYield
+			printThreadStates();
 			return;
 		}
 	}
@@ -82,10 +87,6 @@ void scheduler(){
 	}
 	// Switch to next READY thread
 	switcher(currentThread->prev, currentThread);
-}
-
-void threadYield(){
-	scheduler();
 }
 
 /*
