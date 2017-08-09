@@ -10,11 +10,16 @@
 Question 1 - 3 marks
 There is a comment saying " Wow! " in the switcher function in OSA1.c . This is to indicate something very bad is happening here. Explain what it is.
 
+Freeing the Thread from the stack but the handler is now undefined..? Memory leaks?
+
 
 Question 2 - 2 marks
 Why are the time consuming calculations in threads3.c required in order to demonstrate the effectiveness of the pre-emptive scheduler?
 
+Otherwise it wouldn't be blocked; thread would complete or would have a very long process (millions of printf) for it to be yielded.
 
 Question 3 - 4 marks
 In threads3.c there is some code around the call to rand() to block signals and then allow them again.
 Explain what can happen if this is not done. Also give an explanation as to why this can happen.
+
+We would be blocking the code within rand() which may cause it to block. Infact it does block if you try it.
