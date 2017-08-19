@@ -45,8 +45,6 @@ void removeThreadFromList(Thread thread){
 	printf("\ndisposing %d\n", thread->tid);
 	thread->prev->next = thread->next;
 	thread->next->prev = thread->prev;
-	thread->next = NULL;
-	thread->prev = NULL;
 	free(thread->stackAddr); // Wow!
 }
 
@@ -82,14 +80,14 @@ void scheduler(){
 			printThreadStates();
 			return;
 		}
+	} else {
+		// list has >1 thread, pick next READY thread
+		while (currentThread->state != READY) {
+			currentThread = currentThread->next;
+		}
+		// Switch to next READY thread
+		switcher(currentThread->prev, currentThread);
 	}
-
-	// pick next READY thread
-	while (currentThread->state != READY) {
-		currentThread = currentThread->next;
-	}
-	// Switch to next READY thread
-	switcher(currentThread->prev, currentThread);
 }
 
 /*
