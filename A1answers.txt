@@ -23,7 +23,8 @@ because the memory for the handler is now unreachable and can't be allocated aga
 Question 2 - 2 marks
 Why are the time consuming calculations in threads3.c required in order to demonstrate the effectiveness of the pre-emptive scheduler?
 
-The time consuming calculations in wasteTime() (i.e. the nested loops and rand()) are required otherwise the thread is likely to complete its process before it is pre-empted. If the thread had 
+The time consuming calculations in wasteTime() (i.e. the nested loops and rand()) are
+required otherwise the thread is likely to complete its process before it is pre-empted. If the thread had
 a longer process (e.g. thousands of printf()) then the wasteTime() calls wouldn't be required
 for the demonstration.
 
@@ -35,7 +36,9 @@ Explain what can happen if this is not done. Also give an explanation as to why 
 Without the signalsOff() and signalsOn() calls around rand() signals such as SIGVTALRM are able
 to block the code within rand(). Because I've set SIGVTALRM to call threadYield() this can
 result in a thread being yielded while it is in the rand() code which may cause it to hang
-(in fact after a couple tries the program does hang). 
+(in fact after a couple tries the program does hang).
 
-This can happen because the code in rand() is not left to finish executing and because rand() is shared by the threads the lock is not given up by the yielded thread meaning the next thread (and hence the entire program) is left waiting forever. 
+This can happen because the code in rand() is not left to finish executing and because
+rand() is shared by the threads the lock is not given up by the yielded thread meaning
+the next thread (and hence the entire program) is left waiting forever.
 (I'm not 100% sure that rand() is a shared process.)
