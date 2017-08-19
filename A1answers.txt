@@ -10,16 +10,32 @@
 Question 1 - 3 marks
 There is a comment saying " Wow! " in the switcher function in OSA1.c . This is to indicate something very bad is happening here. Explain what it is.
 
-Freeing the Thread from the stack but the handler is now undefined..? Memory leaks?
+The code here is: free(thread->stackAddr); // Wow!
+This is freeing the stack space for the thread and is called once the thread is finished,
+that is, the stack address for the thread, threadStack.ss_sp, is freed from memory.
+
+However, this means the handler for the thread (defined in createThread() with sigaltstack()
+on the threadStack) is now undefined. This will lead to memory leaks which is bad
+because the memory for the handler is now unreachable and can't be allocated again.
+(It can be with techniques like garbage collection.)
 
 
 Question 2 - 2 marks
 Why are the time consuming calculations in threads3.c required in order to demonstrate the effectiveness of the pre-emptive scheduler?
 
-Otherwise it wouldn't be blocked; thread would complete or would have a very long process (millions of printf) for it to be yielded.
+The time consuming calculations in wasteTime() (i.e. the nested loops and rand()) are required otherwise the thread is likely to complete its process before it is pre-empted. If the thread had 
+a longer process (e.g. thousands of printf()) then the wasteTime() calls wouldn't be required
+for the demonstration.
+
 
 Question 3 - 4 marks
 In threads3.c there is some code around the call to rand() to block signals and then allow them again.
 Explain what can happen if this is not done. Also give an explanation as to why this can happen.
 
-We would be blocking the code within rand() which may cause it to block. Infact it does block if you try it.
+Without the signalsOff() and signalsOn() calls around rand() signals such as SIGVTALRM are able
+to block the code within rand(). Because I've set SIGVTALRM to call threadYield() this can
+result in a thread being yielded while it is in the rand() code which may cause it to hang
+(in fact after a couple tries the program does hang). 
+
+This can happen because the code in rand() is not left to finish executing and because rand() is shared by the threads the lock is not given up by the yielded thread meaning the next thread (and hence the entire program) is left waiting forever. 
+(I'm not 100% sure that rand() is a shared process.)

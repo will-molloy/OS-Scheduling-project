@@ -7,23 +7,23 @@ sigset_t signalSet;
 void signalsOff() {
 	if (sigemptyset(&signalSet) < 0) {
 		perror("empty signal set");
-		exit(EXIT_FAILURE);		
+		exit(EXIT_FAILURE);
 	}
 	if (sigaddset(&signalSet, SIGVTALRM) < 0) {
 		perror("add sigvtalrm");
-		exit(EXIT_FAILURE);		
+		exit(EXIT_FAILURE);
 	}
 	if (sigprocmask(SIG_BLOCK, &signalSet, NULL) < 0) { // block SIGVTALRM
 		perror("block signal");
 		exit(EXIT_FAILURE);
-	}	
+	}
 }
 
 void signalsOn() {
 	if (sigprocmask(SIG_UNBLOCK, &signalSet, NULL) < 0) {
 		perror("unblock signal");
 		exit(EXIT_FAILURE);
-	}	
+	}
 }
 
 int wasteTime(int number) {
@@ -50,7 +50,7 @@ void thread1() {
 	}
 }
 
-void thread2() { 
+void thread2() {
 	int i;
 	for (i = 0; i < 5; i++) {
 		wasteTime(20);
